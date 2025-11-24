@@ -61,10 +61,9 @@ Amazon ECR (Elastic Container Registry) is a fully managed Docker container regi
 
 We are using two data sources, the Kaggle data of fraud ethereum transactions as our labelled data for training the Isolation Forest model and then use this model on the ethereum transactions data which we collect daily using the Etherscan API. We use Amazon S3 and RDS to collect the API data, and store them. We also use Amazon ECR to preprocess the big API data to automate and schedule data ingestion and perform ETL jobs on it. 
 
-## Data Transformation and Feature Engineering of the labelled (Kaggle) dataset.
+## Data Transformation and Feature Engineering of the Ethereum transactions (API) dataset.
 
-The Kaggle Etheurem data (labelled data) gets transformed by doing some feature engineering to improve the performance of the Isolation Forest Model. We chose this dataset, because it is reliable (has past and original Ethereum transactions), labeled fraudulent and legitimate Ethereum transactions, and used for initial training, validation, and benchmark comparison.
-
+The Etheurem data (unlabelled data) gets transformed by doing some feature engineering to improve the performance of the Isolation Forest Model. 
 The `Feature_Engineering.ipynb` notebook has all the codes for the data transformation.
 
 The notebook starts with creating a Spark DataFrame from raw transaction data, then performs data cleaning and type conversions. It identifies contract interactions by checking if contractAddress is present, cleans function names by removing parameter signatures, and casts columns to appropriate types (numeric or categorical).
@@ -77,7 +76,7 @@ Categorical features like methodId, functionName, and time_slot are encoded usin
 
 Finally, all engineered features are joined back to the main DataFrame using left joins on appropriate keys (from, to, date, week_start). The result is a comprehensive dataset combining raw transaction data with temporal patterns, behavioral metrics, anomaly indicators, and encoded categorical variables—ready for downstream analytics or fraud detection models.
 
-# Application of Isolation Forest Tree Model on the transformed labelled data.
+# Application of Isolation Forest Tree Model on the transformed API data.
 
 The notebook that has the codes for this step is `Modeling.ipynb`.
 
@@ -93,9 +92,6 @@ An Isolation Forest classifier is configured with 100 trees (n_estimators=100), 
 4. Training and Prediction
 The model is trained on the feature matrix, then generates predictions where normal transactions are labeled as 1 and anomalies as -1. Each transaction receives an anomaly score (lower scores indicate higher suspicion), and the notebook outputs the total anomaly count with percentage, plus the top 10 most suspicious transactions sorted by anomaly score. 
 
-# Application the Isolation Forest Tree Model on the processed and transformed API data.
-
-
 # Running the test cases
 
 
@@ -107,10 +103,14 @@ The model is trained on the feature matrix, then generates predictions where nor
 
 # Team Members and Roles
 
-- Project Manager/Team Lead (Everybody) – Overall project coordination, system architecture design, timeline management, and communication. 
+- Project Manager/Team Lead (Everybody) – Overall project coordination, system architecture design, timeline management, and communication.
+  
 - ML Engineer (Seohyun Oh) – Isolation Forest model development, performance evaluation, feature engineering, and threshold optimization for anomaly detection.
+  
 - Backend Developers (Ananya Jogalekar and Farnoosh Memari)– AWS infrastructure management,Etherscan API integration, MySQL database design, batch processing pipeline, and automated scheduling implementation.
+  
 - Frontend Developer (Shelly Cao) – Streamlit dashboard development, data visualization, user interface design, and real-time alert display systems.
-
+  
 - DevOps Engineer (Sebine Scaria) – README documentation, Docker and Devcontainer containerization, CI/CD pipeline setup, and system monitoring.
+
 
