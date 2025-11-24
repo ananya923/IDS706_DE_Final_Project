@@ -1,0 +1,6 @@
+pip
+pandas
+numpy
+IsolationForest
+scikit-learn
+pyspark
