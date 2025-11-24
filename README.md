@@ -1,4 +1,4 @@
-## Unusual Suspects - Crypto Market Fraud Detection Model
+# Unusual Suspects - Crypto Market Fraud Detection Model
 
 # Description
 
@@ -36,7 +36,7 @@ Apply trained model to daily transaction batches, compute anomaly scores, and ap
 5. Dashboard & Monitoring
 Build Streamlit-based dashboard displaying real-time fraud alerts, transaction pattern visualizations, daily statistics, and manual review interface for risk team validation.
 
-## Project Setup
+# Project Setup
 
 # Devcontainer Setup
 
@@ -46,7 +46,7 @@ The devcontainer folder for this assignment is named as .devconatiner which has 
 
 We do use some Amazon tools which need not require a devcontainer setup, since those tools are accessed in the cloud (AWS)
 
-## Data Ingestion
+# Data Ingestion
 
 # Description of the tools used for this step
 
@@ -99,7 +99,7 @@ The model is trained on the feature matrix, then generates predictions where nor
 # Running the test cases
 
 
-## Key Takeaways:
+# Key Takeaways:
 
 
 # Dashboard
@@ -111,4 +111,5 @@ The model is trained on the feature matrix, then generates predictions where nor
 - ML Engineer (Seohyun Oh) – Isolation Forest model development, performance evaluation, feature engineering, and threshold optimization for anomaly detection.
 - Backend Developers (Ananya Jogalekar and Farnoosh Memari)– AWS infrastructure management,Etherscan API integration, MySQL database design, batch processing pipeline, and automated scheduling implementation.
 - Frontend Developer (Shelly Cao) – Streamlit dashboard development, data visualization, user interface design, and real-time alert display systems.
+
 - DevOps Engineer (Sebine Scaria) – README documentation, Docker and Devcontainer containerization, CI/CD pipeline setup, and system monitoring.
