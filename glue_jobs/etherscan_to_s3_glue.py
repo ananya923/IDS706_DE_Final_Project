@@ -13,7 +13,7 @@ ETH_ADDRESS = os.getenv(
     "92PHT62WJFSRXFPMJ84JD51GK2NHCI9KJ3",
     "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
 )
-BUCKET = os.getenv("RAW_BUCKET_NAME", "de-27-team11")
+BUCKET = os.getenv("RAW_BUCKET_NAME", "de-27-team11-new")
 CHAIN_ID = 1  # mainnet
 
 
