@@ -1,6 +1,6 @@
 """
-Feature engineering code for data transformations as written by our team,
-but along with AWS Glue job setup and data I/O from AWS S3.
+Code in AWS which includes connections to RDS, in additions to S3.
+RDS will be used for just storing and querying the data, and possibly for dashboarding.
 """
 
 import sys
@@ -16,7 +16,7 @@ from pyspark.ml.feature import StringIndexer, OneHotEncoder
 from pyspark.ml import Pipeline
 
 # Initialize Glue context
-args = getResolvedOptions(sys.argv, ["JOB_NAME", "OUTPUT_BUCKET"])
+args = getResolvedOptions(sys.argv, ["JOB_NAME", "OUTPUT_BUCKET", "RDS_CONNECTION"])
 sc = SparkContext()
 glueContext = GlueContext(sc)
 spark = glueContext.spark_session
@@ -25,6 +25,7 @@ job.init(args["JOB_NAME"], args)
 
 # Job parameters
 OUTPUT_BUCKET = args["OUTPUT_BUCKET"]
+RDS_CONNECTION = args["RDS_CONNECTION"]
 
 
 def process_transactions(glueContext, database_name: str, table_name: str):
@@ -280,12 +281,40 @@ trx_df = process_transactions(
     glueContext=glueContext, database_name="ethereum_db", table_name="txlist"
 )
 
-# Write output to S3 as Parquet (partitioned by date for efficiency)
-output_path = f"s3://{OUTPUT_BUCKET}/processed/ethereum/txlist_features/"
-print(f"Writing output to {output_path}")
+# Output 1: Write to S3 as Parquet (for ML model)
+output_s3_path = f"s3://{OUTPUT_BUCKET}/processed/ethereum/txlist_features/"
+print(f"Writing output to S3: {output_s3_path}")
 
-trx_df.write.mode("overwrite").partitionBy("date").parquet(output_path)
+trx_df.write.mode("overwrite").partitionBy("date").parquet(output_s3_path)
 
+print("S3 output complete!")
+
+# Output 2: Write to RDS (for dashboard/queries)
+print(f"Writing output to RDS using connection: {RDS_CONNECTION}")
+
+# Convert one-hot encoded vectors to string representation for RDS compatibility
+# (RDS doesn't support Spark's Vector type)
+trx_df_for_rds = trx_df.select(
+    [
+        col
+        for col in trx_df.columns
+        if not col.endswith("_onehot")  # Exclude one-hot encoded columns
+    ]
+)
+
+# Write to RDS using the Glue connection
+glueContext.write_dynamic_frame.from_options(
+    frame=DynamicFrame.fromDF(trx_df_for_rds, glueContext, "trx_df_for_rds"),
+    connection_type="mysql",
+    connection_options={
+        "useConnectionProperties": "true",
+        "dbtable": "processed_transactions",
+        "connectionName": RDS_CONNECTION,
+    },
+    transformation_ctx="write_to_rds",
+)
+
+print("RDS output complete!")
 print("ETL job completed successfully!")
 
 job.commit()
