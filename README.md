@@ -1,10 +1,10 @@
-## Unusual Suspects - Crypto Market Fraud Detection Model
+# Unusual Suspects - Crypto Market Fraud Detection Model
 
-# Description
+## Description
 
  Unusual Suspects is a machine learning–driven fraud detection system designed to identify anomalous and suspicious patterns in Ethereum transaction data. The system runs on a daily batch schedule to extract, process, and analyze blockchain transactions using both labeled and unlabeled datasets. It delivers actionable insights to risk management teams through an interactive fraud monitoring dashboard, aiming to achieve high precision while maintaining low false-positive rates.
 
-# Data Sources
+## Data Sources
 Model development dataset: 
 - [[Kaggle](https://www.kaggle.com/datasets/vagifa/ethereum-frauddetection-dataset)] Ethereum Fraud Detection DatasetLinks to an external site.
 - Contains labeled fraudulent and legitimate Ethereum transactions
@@ -14,7 +14,7 @@ Operational Dataset:
 - Daily transactions and metadata (sender, receiver, gas fee, timestamps)
 - Stored in structured form for batch feature extraction.
 
-# Architecture
+## Architecture
 
 1. Data Collection & Storage
 
@@ -36,9 +36,9 @@ Apply trained model to daily transaction batches, compute anomaly scores, and ap
 5. Dashboard & Monitoring
 Build Streamlit-based dashboard displaying real-time fraud alerts, transaction pattern visualizations, daily statistics, and manual review interface for risk team validation.
 
-## Project Setup
+# Project Setup
 
-# Devcontainer Setup
+## Devcontainer Setup
 
 A devcontainer is a Docker-based container specifically configured to serve as a complete development environment, ensuring consistency and reproducibility across different machines and setups. It allows developers to package all the necessary tools, libraries, frameworks, and configuration files for a project into a single environment, making onboarding and environment setup much faster and more reliable.
 
@@ -48,7 +48,7 @@ We do use some Amazon tools which need not require a devcontainer setup, since t
 
 ## Data Ingestion
 
-# Description of the tools used for this step
+## Description of the tools used for this step
 
 - Amazon S3
 Amazon S3 (Simple Storage Service) is an object storage service from AWS that provides industry-leading scalability, data availability, security, and performance for storing and protecting any amount of data. Organizations of all sizes use S3 for diverse use cases including data lakes, websites, mobile applications, backup and restore, archiving, enterprise applications, IoT devices, and big data analytics. S3 integrates seamlessly with other AWS services like ECR for big data processing, making it a foundational component of cloud-based data architectures.
@@ -61,10 +61,9 @@ Amazon ECR (Elastic Container Registry) is a fully managed Docker container regi
 
 We are using two data sources, the Kaggle data of fraud ethereum transactions as our labelled data for training the Isolation Forest model and then use this model on the ethereum transactions data which we collect daily using the Etherscan API. We use Amazon S3 and RDS to collect the API data, and store them. We also use Amazon ECR to preprocess the big API data to automate and schedule data ingestion and perform ETL jobs on it. 
 
-# Data Transformation and Feature Engineering of the labelled (Kaggle) dataset.
+## Data Transformation and Feature Engineering of the Ethereum transactions (API) dataset.
 
-The Kaggle Etheurem data (labelled data) gets transformed by doing some feature engineering to improve the performance of the Isolation Forest Model. We chose this dataset, because it is reliable (has past and original Ethereum transactions), labeled fraudulent and legitimate Ethereum transactions, and used for initial training, validation, and benchmark comparison.
-
+The Etheurem data (unlabelled data) gets transformed by doing some feature engineering to improve the performance of the Isolation Forest Model. 
 The `Feature_Engineering.ipynb` notebook has all the codes for the data transformation.
 
 The notebook starts with creating a Spark DataFrame from raw transaction data, then performs data cleaning and type conversions. It identifies contract interactions by checking if contractAddress is present, cleans function names by removing parameter signatures, and casts columns to appropriate types (numeric or categorical).
@@ -77,7 +76,7 @@ Categorical features like methodId, functionName, and time_slot are encoded usin
 
 Finally, all engineered features are joined back to the main DataFrame using left joins on appropriate keys (from, to, date, week_start). The result is a comprehensive dataset combining raw transaction data with temporal patterns, behavioral metrics, anomaly indicators, and encoded categorical variables—ready for downstream analytics or fraud detection models.
 
-# Application of Isolation Forest Tree Model on the transformed labelled data.
+# Application of Isolation Forest Tree Model on the transformed API data.
 
 The notebook that has the codes for this step is `Modeling.ipynb`.
 
@@ -93,13 +92,10 @@ An Isolation Forest classifier is configured with 100 trees (n_estimators=100), 
 4. Training and Prediction
 The model is trained on the feature matrix, then generates predictions where normal transactions are labeled as 1 and anomalies as -1. Each transaction receives an anomaly score (lower scores indicate higher suspicion), and the notebook outputs the total anomaly count with percentage, plus the top 10 most suspicious transactions sorted by anomaly score. 
 
-# Application the Isolation Forest Tree Model on the processed and transformed API data.
-
-
 # Running the test cases
 
 
-## Key Takeaways:
+# Key Takeaways:
 
 
 # Dashboard
@@ -107,8 +103,15 @@ The model is trained on the feature matrix, then generates predictions where nor
 
 # Team Members and Roles
 
-- Project Manager/Team Lead (Everybody) – Overall project coordination, system architecture design, timeline management, and communication. 
+- Project Manager/Team Lead (Everybody) – Overall project coordination, system architecture design, timeline management, and communication.
+  
 - ML Engineer (Seohyun Oh) – Isolation Forest model development, performance evaluation, feature engineering, and threshold optimization for anomaly detection.
+  
 - Backend Developers (Ananya Jogalekar and Farnoosh Memari)– AWS infrastructure management,Etherscan API integration, MySQL database design, batch processing pipeline, and automated scheduling implementation.
+  
 - Frontend Developer (Shelly Cao) – Streamlit dashboard development, data visualization, user interface design, and real-time alert display systems.
+  
 - DevOps Engineer (Sebine Scaria) – README documentation, Docker and Devcontainer containerization, CI/CD pipeline setup, and system monitoring.
+
+
+

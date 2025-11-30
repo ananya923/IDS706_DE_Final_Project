@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: fraud-detection-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: fraud_detection
+      MYSQL_USER: frauduser
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - fraud-network
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: fraud-dashboard
+    depends_on:
+      - mysql
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=frauduser
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - DB_NAME=fraud_detection
+    ports:
+      - "8501:8501"
+    networks:
+      - fraud-network
+
+volumes:
+  mysql_data:
+
+networks:
+  fraud-network:
+    driver: bridge
+
