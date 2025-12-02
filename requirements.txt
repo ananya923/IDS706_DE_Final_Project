@@ -1,6 +1,4 @@
-pip
-pandas
-numpy
-IsolationForest
-scikit-learn
-pyspark
+pandas==2.1.3
+numpy==1.26.2
+scikit-learn==1.3.2  # IsolationForest is INSIDE this
+pyspark==3.5.0
