@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment variables
+.env
+file.env
+*.env
+!file.env.example
+
+# AWS
+.aws/
+*.pem
+
+# Data files
+*.csv
+*.json
+*.parquet
+raw/
+processed/
+models/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
