@@ -1,48 +1,129 @@
-import pytest
 import os
+import pytest
 
-def test_dashboard_exists():
-    """Test that Streamlit dashboard exists"""
-    if not os.path.exists('dashboard/app.py'):
-        pytest.skip("Dashboard will be added in future PR")
+def test_dashboard_file_exists():
+    """Test that dashboard file exists"""
+    if not (os.path.exists('dashboard/app.py') or os.path.exists('app.py')):
+        pytest.skip("Dashboard file not yet in repo")
     
-    assert os.path.exists('dashboard/app.py')
+    assert os.path.exists('dashboard/app.py') or os.path.exists('app.py')
 
-def test_dashboard_has_streamlit():
-    """Test that dashboard imports Streamlit"""
-    if not os.path.exists('dashboard/app.py'):
-        pytest.skip("Dashboard not yet in repo")
+def test_dashboard_imports_streamlit():
+    """Test that dashboard imports streamlit"""
+    # Check both possible locations
+    if os.path.exists('dashboard/app.py'):
+        filepath = 'dashboard/app.py'
+    elif os.path.exists('app.py'):
+        filepath = 'app.py'
+    else:
+        pytest.skip("Dashboard file not found")
     
-    with open('dashboard/app.py', 'r') as f:
+    with open(filepath, 'r') as f:
         content = f.read()
-        assert 'import streamlit' in content, "Should import Streamlit"
-        assert 'st.' in content, "Should use Streamlit components"
+        assert 'import streamlit' in content or 'import streamlit as st' in content
 
 def test_dashboard_has_title():
     """Test that dashboard has a title"""
-    if not os.path.exists('dashboard/app.py'):
-        pytest.skip("Dashboard not yet in repo")
+    if os.path.exists('dashboard/app.py'):
+        filepath = 'dashboard/app.py'
+    elif os.path.exists('app.py'):
+        filepath = 'app.py'
+    else:
+        pytest.skip("Dashboard file not found")
     
-    with open('dashboard/app.py', 'r') as f:
+    with open(filepath, 'r') as f:
         content = f.read()
-        assert 'st.title' in content or 'st.header' in content, "Should have a title"
+        assert 'st.title' in content
 
-def test_dashboard_loads_data():
-    """Test that dashboard has data loading function"""
-    if not os.path.exists('dashboard/app.py'):
-        pytest.skip("Dashboard not yet in repo")
+def test_dashboard_has_mock_data_function():
+    """Test that dashboard has mock data loading function"""
+    if os.path.exists('dashboard/app.py'):
+        filepath = 'dashboard/app.py'
+    elif os.path.exists('app.py'):
+        filepath = 'app.py'
+    else:
+        pytest.skip("Dashboard file not found")
     
-    with open('dashboard/app.py', 'r') as f:
+    with open(filepath, 'r') as f:
         content = f.read()
-        assert 'load_mock_data' in content or 'load_data' in content, "Should have data loading function"
+        assert 'def load_mock_data' in content or 'def load_data' in content
 
-def test_dashboard_no_hardcoded_credentials():
-    """Test that dashboard doesn't have hardcoded database credentials"""
-    if not os.path.exists('dashboard/app.py'):
-        pytest.skip("Dashboard not yet in repo")
+def test_dashboard_uses_pandas():
+    """Test that dashboard imports pandas for data handling"""
+    if os.path.exists('dashboard/app.py'):
+        filepath = 'dashboard/app.py'
+    elif os.path.exists('app.py'):
+        filepath = 'app.py'
+    else:
+        pytest.skip("Dashboard file not found")
     
-    with open('dashboard/app.py', 'r') as f:
+    with open(filepath, 'r') as f:
         content = f.read()
-        # Should not have hardcoded passwords
-        assert 'password=' not in content.lower() or 'mock' in content.lower(), \
-            "Should not have hardcoded credentials"
+        assert 'import pandas' in content or 'import pandas as pd' in content
+
+def test_dashboard_no_hardcoded_secrets():
+    """Test that dashboard has no hardcoded secrets"""
+    if os.path.exists('dashboard/app.py'):
+        filepath = 'dashboard/app.py'
+    elif os.path.exists('app.py'):
+        filepath = 'app.py'
+    else:
+        pytest.skip("Dashboard file not found")
+    
+    with open(filepath, 'r') as f:
+        content = f.read()
+        
+    
+        suspicious_patterns = [
+            'api_key=',
+            'apikey=',
+            'secret_key=',
+            'access_key='
+        ]
+        for pattern in suspicious_patterns:
+            if pattern in content.lower():
+                pytest.fail(f"Found potential hardcoded secret pattern: {pattern}")
+
+def test_dashboard_has_dataframe_display():
+    """Test that dashboard displays data using st.dataframe"""
+    if os.path.exists('dashboard/app.py'):
+        filepath = 'dashboard/app.py'
+    elif os.path.exists('app.py'):
+        filepath = 'app.py'
+    else:
+        pytest.skip("Dashboard file not found")
+    
+    with open(filepath, 'r') as f:
+        content = f.read()
+        assert 'st.dataframe' in content
+
+def test_dashboard_has_metrics():
+    """Test that dashboard shows metrics"""
+    if os.path.exists('dashboard/app.py'):
+        filepath = 'dashboard/app.py'
+    elif os.path.exists('app.py'):
+        filepath = 'app.py'
+    else:
+        pytest.skip("Dashboard file not found")
+    
+    with open(filepath, 'r') as f:
+        content = f.read()
+        assert 'st.metric' in content or 'st.columns' in content
+
+def test_dashboard_has_valid_python_syntax():
+    """Test that dashboard file has valid Python syntax"""
+    if os.path.exists('dashboard/app.py'):
+        filepath = 'dashboard/app.py'
+    elif os.path.exists('app.py'):
+        filepath = 'app.py'
+    else:
+        pytest.skip("Dashboard file not found")
+    
+    # Try to compile the file to check syntax
+    with open(filepath, 'r') as f:
+        code = f.read()
+    
+    try:
+        compile(code, filepath, 'exec')
+    except SyntaxError as e:
+        pytest.fail(f"Syntax error in dashboard: {e}")
