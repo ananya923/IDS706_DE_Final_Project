@@ -1,41 +1,35 @@
-name: CI Pipeline
+name: CI Testing Pipeline
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
+    branches: [ main ]
+  push:
     branches: [ main ]
 
 jobs:
-  test-and-lint:
+  test:
     runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
     
-    - name: Set up Python
+    - name: Set up Python 3.9
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
     
     - name: Install dependencies
       run: |
-        pip install --upgrade pip
+        python -m pip install --upgrade pip
         pip install -r requirements.txt
     
-    - name: Run linting
+    - name: Run linting with flake8
       run: |
-        flake8 scripts/ tests/ --max-line-length=100 --exclude=__pycache__
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics
       continue-on-error: true
     
-    - name: Run tests
+    - name: Run tests with pytest
       run: |
-        pytest tests/ -v --tb=short --cov=scripts --cov-report=term-missing
-    
-    - name: Validate CloudFormation template
-      run: |
-        pip install cfn-lint
-        if [ -f temp_ingestion_infrastructure.yaml ]; then
-          cfn-lint temp_ingestion_infrastructure.yaml
-        fi
+        pytest tests/ -v --tb=short

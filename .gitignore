@@ -6,7 +6,7 @@ __pycache__/
 .coverage
 htmlcov/
 
-# Environment variables - SECURITY!
+# Environment variables
 .env
 file.env
 *.env
@@ -35,3 +35,6 @@ models/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Docker
+.dockerignore

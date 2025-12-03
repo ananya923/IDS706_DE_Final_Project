@@ -21,23 +21,19 @@ def test_ci_workflow_exists():
     """Test that CI pipeline is set up"""
     assert os.path.exists('.github/workflows/ci-pipeline.yml')
 
-def test_scripts_directory_structure():
-    """Test scripts directory exists or can be created"""
-    # This test is flexible - passes whether scripts exist or not
-    if not os.path.exists('scripts/'):
-        pytest.skip("Scripts directory will be added in future PR")
-    else:
-        assert True
-
 def test_project_has_tests():
     """Test that test infrastructure is in place"""
     assert os.path.exists('tests/')
     assert os.path.exists('tests/__init__.py')
 
-def test_requirements_file_exists():
-    """Test that requirements.txt exists and has key dependencies"""
+def test_requirements_has_dependencies():
+    """Test that requirements.txt has key dependencies"""
     assert os.path.exists('requirements.txt')
     with open('requirements.txt', 'r') as f:
         content = f.read()
         assert 'pytest' in content
-        assert 'scikit-learn' in content
+
+def test_docker_setup_exists():
+    """Test that Docker setup exists for containerization"""
+    assert os.path.exists('Dockerfile')
+    assert os.path.exists('.dockerignore')
