@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  test:
+    build:
+      context: .
+      target: testing
+    container_name: fraud-detection-tests
+    volumes:
+      - ./tests:/app/tests
+      - ./scripts:/app/scripts
+      - ./dashboard:/app/dashboard
+    environment:
+      - PYTHONPATH=/app
+    command: pytest tests/ -v --tb=short
+
+  ingestion:
+    build:
+      context: .
+      target: ingestion
+    container_name: fraud-detection-ingestion
+    volumes:
+      - ./glue_jobs:/app/glue_jobs
+    env_file:
+      - file.env
+    profiles:
+      - pipeline
+
+  dashboard:
+    build:
+      context: .
+      target: dashboard
+    container_name: fraud-detection-dashboard
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./dashboard:/app/dashboard
+    env_file:
+      - file.env
+    profiles:
+      - dashboard

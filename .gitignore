@@ -38,3 +38,7 @@ Thumbs.db
 
 # Docker
 .dockerignore
+
+# Docker
+file.env
+.env
