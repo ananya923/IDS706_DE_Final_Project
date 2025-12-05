@@ -1,0 +1,82 @@
+name: Build & Deploy Dashboard to EC2
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./dashboard
+          push: true
+          tags: farnooshmemari/unusual-suspects-dashboard:latest
+
+      - name: Prepare app directory on EC2
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_IP }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            if [ ! -d "/home/ec2-user/app" ]; then
+              mkdir -p /home/ec2-user/app
+              chown ec2-user:ec2-user /home/ec2-user/app
+            fi
+
+      - name: Sync repo on EC2
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_IP }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            sudo yum install -y git || sudo apt-get install -y git
+
+            cd /home/ec2-user/app
+
+            if [ -d ".git" ]; then
+              git fetch --all
+              git reset --hard origin/main
+            else
+              rm -rf /home/ec2-user/app/*
+              git clone https://github.com/ananya923/IDS706_DE_Final_Project.git .
+            fi
+
+      - name: Run dashboard with Docker Compose on EC2
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_IP }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ec2-user/app/dashboard
+
+            if docker compose version > /dev/null 2>&1; then
+              DOCKER_COMPOSE="docker compose"
+            else
+              if ! command -v docker-compose &> /dev/null; then
+                sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+                sudo chmod +x /usr/local/bin/docker-compose
+              fi
+              DOCKER_COMPOSE="docker-compose"
+            fi
+
+            $DOCKER_COMPOSE pull
+            $DOCKER_COMPOSE down
+            $DOCKER_COMPOSE up -d
