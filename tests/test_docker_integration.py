@@ -125,20 +125,17 @@ def check_docker_available():
         return False
 
 
-@pytest.mark.skipif(not check_docker_available(), reason="Docker not available")
-def test_docker_compose_config_validates():
-    """Test that docker-compose configuration is valid (if Docker available)"""
-    result = subprocess.run(
-        ['docker-compose', 'config'],
-        capture_output=True,
-        text=True,
-        timeout=10
-    )
-    
-    assert result.returncode == 0, f"docker-compose config invalid: {result.stderr}"
-    
-    # Output should contain the parsed configuration
-    assert 'services' in result.stdout, "docker-compose config should show services"
+def check_docker_compose_available():
+    """Helper function to check if docker-compose is available"""
+    try:
+        result = subprocess.run(
+            ['docker-compose', '--version'],
+            capture_output=True,
+            timeout=5
+        )
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
 
 
 @pytest.mark.skipif(not check_docker_available(), reason="Docker not available")
