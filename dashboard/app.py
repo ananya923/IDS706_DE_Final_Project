@@ -1,85 +1,76 @@
+import os
 import pandas as pd
 from datetime import datetime
 import streamlit as st
+from sqlalchemy import create_engine
 
-def load_mock_data():
-    """Return a mock fraud dataset similar to the final RDS table."""
-    data = [
-        {
-            "tx_hash": "0xaaa111",
-            "from_address": "0xFAR001",
-            "to_address": "0xEXC001",
-            "value_eth": 1.25,
-            "timestamp": "2025-11-26 12:34:56",
-            "anomaly_score": 0.97,
-            "fraud_flag": True,
-        },
-        {
-            "tx_hash": "0xbbb222",
-            "from_address": "0xFAR002",
-            "to_address": "0xEXC002",
-            "value_eth": 0.40,
-            "timestamp": "2025-11-26 13:10:21",
-            "anomaly_score": 0.88,
-            "fraud_flag": True,
-        },
-        {
-            "tx_hash": "0xccc333",
-            "from_address": "0xLEG001",
-            "to_address": "0xSHOP01",
-            "value_eth": 0.05,
-            "timestamp": "2025-11-26 14:02:03",
-            "anomaly_score": 0.45,
-            "fraud_flag": False,
-        },
-        {
-            "tx_hash": "0xddd444",
-            "from_address": "0xLEG002",
-            "to_address": "0xSHOP02",
-            "value_eth": 3.10,
-            "timestamp": "2025-11-26 15:30:00",
-            "anomaly_score": 0.75,
-            "fraud_flag": False,
-        },
-        {
-            "tx_hash": "0xeee555",
-            "from_address": "0xBOT001",
-            "to_address": "0xEXC003",
-            "value_eth": 10.00,
-            "timestamp": "2025-11-26 16:45:10",
-            "anomaly_score": 0.99,
-            "fraud_flag": True,
-        },
-    ]
+# ------------------------------
+# LOAD REAL DATA FROM RDS
+# ------------------------------
+def load_real_data():
+    """
+    Load fraud transactions from RDS final table.
+    Expected columns:
+      tx_hash, from_address, to_address, value_eth, timestamp, anomaly_score, fraud_flag
+    """
 
-    df = pd.DataFrame(data)
+    DB_HOST = os.environ.get("DB_HOST")
+    DB_PORT = os.environ.get("DB_PORT", "5432")
+    DB_NAME = os.environ.get("DB_NAME")
+    DB_USER = os.environ.get("DB_USER")
+    DB_PASSWORD = os.environ.get("DB_PASSWORD")
+
+    if not all([DB_HOST, DB_NAME, DB_USER, DB_PASSWORD]):
+        raise RuntimeError("❌ Missing DB environment variables.")
+
+    # Postgres engine (change if MySQL)
+    engine = create_engine(
+        f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
+
+    query = """
+        SELECT
+            tx_hash,
+            from_address,
+            to_address,
+            value_eth,
+            timestamp,
+            anomaly_score,
+            fraud_flag
+        FROM fraud_scored_tx
+        ORDER BY timestamp;
+    """
+
+    df = pd.read_sql(query, engine)
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     return df
 
-# Page configuration
+
+# ------------------------------
+# STREAMLIT SETUP
+# ------------------------------
 st.set_page_config(
     page_title="Unusual Suspects - Fraud Dashboard",
     layout="wide"
 )
 
-# Main title
 st.title("📊 Unusual Suspects - Ethereum Fraud Monitoring Dashboard")
+st.success("Connected to **REAL RDS DATA** 🎉")
 
-st.write(
-    """
-    This is the initial version of the dashboard.
-    It currently uses **mock data**, and will be connected to RDS and Glue outputs later.
-    """
-)
+# Load data from RDS
+try:
+    df = load_real_data()
+except Exception as e:
+    st.error(f"Error loading RDS data: {e}")
+    st.stop()
 
-st.success("Streamlit is running successfully! 🎉")
 
-# Load mock data
-df = load_mock_data()
+# ------------------------------
+# Dashboard Content
+# ------------------------------
+st.subheader("Fraud Transactions (Live from RDS)")
 
-st.subheader("Mock fraud transactions")
-
-# Sidebar filter for minimum anomaly score
+# Sidebar filter
 min_score = st.sidebar.slider(
     "Minimum anomaly score",
     min_value=0.0,
@@ -88,26 +79,24 @@ min_score = st.sidebar.slider(
     step=0.01,
 )
 
-# Filter data by anomaly score
 filtered_df = df[df["anomaly_score"] >= min_score]
 
-# Simple KPI cards
+# KPI CARDS
 col1, col2, col3 = st.columns(3)
 col1.metric("Total transactions", len(df))
 col2.metric("Suspicious (filtered)", len(filtered_df))
 col3.metric("Threshold", f"{min_score:.2f}")
 
-# Show the filtered table
+# Show filtered table
 st.dataframe(filtered_df, use_container_width=True)
 
-# Fraud risk summary KPIs
-st.subheader("Fraud risk summary")
+# Fraud summary
+st.subheader("Fraud Risk Summary")
 
 total_tx = len(df)
 fraud_tx = int(df["fraud_flag"].sum())
-fraud_rate = fraud_tx / total_tx if total_tx > 0 else 0.0
+fraud_rate = fraud_tx / total_tx if total_tx > 0 else 0
 avg_score = float(df["anomaly_score"].mean())
-max_score = float(df["anomaly_score"].max())
 unique_suspicious = df.loc[df["fraud_flag"], "from_address"].nunique()
 
 k1, k2, k3, k4 = st.columns(4)
@@ -116,23 +105,24 @@ k2.metric("Fraud rate", f"{fraud_rate:.0%}")
 k3.metric("Avg anomaly score", f"{avg_score:.2f}")
 k4.metric("Suspicious source wallets", int(unique_suspicious))
 
-st.subheader("Daily fraud trend")
+# Trend
+st.subheader("Daily Fraud Trend")
 
 daily = (
     df.set_index("timestamp")
       .resample("D")
       .agg(
           total_tx=("tx_hash", "count"),
-          fraud_tx=("fraud_flag", "sum"),
+          fraud_tx=("fraud_flag", "sum")
       )
       .reset_index()
 )
 
-# Use timestamp as index for plotting
 trend_data = daily.set_index("timestamp")[["total_tx", "fraud_tx"]]
 st.line_chart(trend_data)
 
-st.subheader("Top suspicious addresses")
+# Top wallets
+st.subheader("Top Suspicious Addresses")
 
 col_left, col_right = st.columns(2)
 
@@ -161,8 +151,8 @@ with col_right:
     st.dataframe(top_to, use_container_width=True)
 
 
-st.subheader("Anomaly score distribution")
+# Score distribution
+st.subheader("Anomaly Score Distribution")
 
-# Use all transactions for the distribution (not only filtered ones)
 score_counts = df["anomaly_score"].value_counts().sort_index()
 st.bar_chart(score_counts)
