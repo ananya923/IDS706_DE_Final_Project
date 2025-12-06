@@ -82,8 +82,8 @@ The complete pipeline executes in this sequence:
 
 1. API key configuration: Etherscan API keys are configured as environment variables.  
 2. Data ingestion: `etherscan_to_s3_glue.py` calls Etherscan APIs for configured addresses and writes transaction data to S3 buckets.  
-3. Feature engineering: `glue_feature_engineering.py` reads raw S3 data, applies transformations using PySpark, and generates engineered feature tables stored back in S3.  
-4. Model training and scoring: `glue_modeling.py` loads feature tables, trains or applies fraud detection models, and outputs predictions to S3 and RDS.  
+3. Feature engineering: `glue-feature-engineering.py` reads raw S3 data, applies transformations using PySpark, and generates engineered feature tables stored back in S3.  
+4. Model training and scoring: `ethereum_fraud_modeling.py` loads feature tables, trains or applies fraud detection models, and outputs predictions to S3, while `ethereum_fraud_modeling_rds.py` implements the connction to RDS.  
 5. Database loading: processed data and predictions are loaded into RDS tables with proper schema and indexes.  
 6. Athena table creation: external tables in Athena are configured to point at S3 data for SQL-based analysis.  
 7. Dashboard deployment: `app.py` Streamlit application connects to RDS and serves the fraud detection interface.  
@@ -107,18 +107,23 @@ ethereum-fraud-detection/
 │   ├── appy.py
 │   └── docker-compose.yml
 │
+├── images/                     # screenshots for README
+│   └── dashboard_screenshot.png
+│
 ├── glue_jobs/                  # AWS Glue ETL scripts
 │   ├── etherscan_to_s3_glue.py
-│   ├── glue_feature_engineering.py
-│   └── ethereum_modeling.py
+│   ├── glue-feature-engineering.py
+│   ├── ethereum_fraud_modeling.py
+│   └── etherscan_ingestion.py
 │
-├── scripts/                    # Utility and automation scripts
+├── scripts/                    # Raw scripts
 │   ├── __init__.py
 │   ├── feature_engineering.py
 │   └── modeling.py
 │
 ├── tests/                      # Test suite
 │   ├── __pycache__/
+│   ├── __init.py__
 │   ├── test_dashboard.py
 │   ├── test_docker_integration.py
 │   ├── test_etherscan_ingestion.py
@@ -129,15 +134,13 @@ ethereum-fraud-detection/
 ├── .coverage                  # Code coverage report
 ├── .dockerignore              # Docker build exclusions
 ├── .gitignore                 # Git exclusions
-├── Dockerfile                 # Docker container configuration
+├── Dockerfile                 # Docker container
 ├── Makefile                   # Build automation commands
 ├── README.md                  # Project documentation
 ├── docker-compose.yml         # Multi-container Docker configuration
-├── ethereum-feature-engineering.py
-├── ethereum_fraud_modeling.py
 ├── file.env.example           # Environment variables template
 ├── requirements-dev.txt       # Development dependencies
-└── requirements.txt           # Production dependencies
+└── requirements.txt
 
 ```
 
@@ -205,6 +208,9 @@ cd dashboard
 streamlit run app.py
 ```
 Access the dashboard at http://localhost:8501 to explore fraud detection results.
+
+Screenshot of dashboard:
+![](images/dashboard_screenshot.png)
 
 ### Querying Data with Athena
 Create Athena tables pointing to your S3 data:
