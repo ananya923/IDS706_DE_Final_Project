@@ -105,7 +105,8 @@ total_tx = len(df)
 fraud_tx = int(df["fraud_flag"].sum())
 fraud_rate = fraud_tx / total_tx if total_tx > 0 else 0
 avg_score = float(df["anomaly_score"].mean())
-unique_suspicious = df.loc[df["fraud_flag"], "from_address"].nunique()
+# fraud_flag == 1
+unique_suspicious = df.loc[df["fraud_flag"] == 1, "from_address"].nunique()
 
 k1, k2, k3, k4 = st.columns(4)
 k1.metric("Fraudulent transactions", fraud_tx)
@@ -137,7 +138,7 @@ col_left, col_right = st.columns(2)
 with col_left:
     st.caption("Top source addresses (from_address)")
     top_from = (
-        df[df["fraud_flag"]]
+        df[df["fraud_flag"] == 1]
         .groupby("from_address")
         .size()
         .reset_index(name="fraud_count")
@@ -149,7 +150,7 @@ with col_left:
 with col_right:
     st.caption("Top destination addresses (to_address)")
     top_to = (
-        df[df["fraud_flag"]]
+        df[df["fraud_flag"] == 1]
         .groupby("to_address")
         .size()
         .reset_index(name="fraud_count")
