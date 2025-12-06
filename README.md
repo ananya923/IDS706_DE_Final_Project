@@ -1,3 +1,5 @@
+[![CI Testing Pipeline](https://github.com/ananya923/IDS706_DE_Final_Project/actions/workflows/ci-pipeline.yml/badge.svg)](https://github.com/ananya923/IDS706_DE_Final_Project/actions/workflows/ci-pipeline.yml)
+
 # Unusual Suspects: Ethereum Transaction Fraud Detection
 Data Engineering Pipeline for Course IDS706, MS Data Science, Duke University
 
@@ -104,7 +106,7 @@ ethereum-fraud-detection/
 │
 ├── dashboard/                  # Streamlit dashboard application
 │   ├── Dockerfile
-│   ├── appy.py
+│   ├── app.py
 │   └── docker-compose.yml
 │
 ├── images/                     # screenshots for README
