@@ -4,6 +4,7 @@ from datetime import datetime
 import streamlit as st
 from sqlalchemy import create_engine
 
+
 # ------------------------------
 # LOAD REAL DATA FROM RDS
 # ------------------------------
@@ -11,11 +12,12 @@ def load_real_data():
     """
     Load fraud transactions from RDS final table.
     Expected columns:
-      tx_hash, from_address, to_address, value_eth, timestamp, anomaly_score, fraud_flag
+      tx_hash, from_address, to_address, value_eth,
+      timestamp, anomaly_score, fraud_flag
     """
 
     DB_HOST = os.environ.get("DB_HOST")
-    DB_PORT = os.environ.get("DB_PORT", "5432")
+    DB_PORT = os.environ.get("DB_PORT", "3306")  # MySQL default
     DB_NAME = os.environ.get("DB_NAME")
     DB_USER = os.environ.get("DB_USER")
     DB_PASSWORD = os.environ.get("DB_PASSWORD")
@@ -23,10 +25,10 @@ def load_real_data():
     if not all([DB_HOST, DB_NAME, DB_USER, DB_PASSWORD]):
         raise RuntimeError("❌ Missing DB environment variables.")
 
-    # MySQL engine
+    # MySQL engine (no hard-coded secrets)
     engine = create_engine(
-    f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
+        f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
 
     query = """
         SELECT
@@ -46,12 +48,19 @@ def load_real_data():
     return df
 
 
+def load_data():
+    """
+    Wrapper used by tests – simply returns real RDS data.
+    """
+    return load_real_data()
+
+
 # ------------------------------
 # STREAMLIT SETUP
 # ------------------------------
 st.set_page_config(
     page_title="Unusual Suspects - Fraud Dashboard",
-    layout="wide"
+    layout="wide",
 )
 
 st.title("📊 Unusual Suspects - Ethereum Fraud Monitoring Dashboard")
@@ -59,11 +68,10 @@ st.success("Connected to **REAL RDS DATA** 🎉")
 
 # Load data from RDS
 try:
-    df = load_real_data()
+    df = load_data()
 except Exception as e:
     st.error(f"Error loading RDS data: {e}")
     st.stop()
-
 
 # ------------------------------
 # Dashboard Content
@@ -110,12 +118,12 @@ st.subheader("Daily Fraud Trend")
 
 daily = (
     df.set_index("timestamp")
-      .resample("D")
-      .agg(
-          total_tx=("tx_hash", "count"),
-          fraud_tx=("fraud_flag", "sum")
-      )
-      .reset_index()
+    .resample("D")
+    .agg(
+        total_tx=("tx_hash", "count"),
+        fraud_tx=("fraud_flag", "sum"),
+    )
+    .reset_index()
 )
 
 trend_data = daily.set_index("timestamp")[["total_tx", "fraud_tx"]]
@@ -149,7 +157,6 @@ with col_right:
         .head(5)
     )
     st.dataframe(top_to, use_container_width=True)
-
 
 # Score distribution
 st.subheader("Anomaly Score Distribution")
