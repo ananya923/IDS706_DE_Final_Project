@@ -1,286 +1,165 @@
 """
-Unit Tests for Streamlit Dashboard
-Tests data loading, filtering, and display logic
+Unit Tests for Fraud Modeling Script
+Tests anomaly detection logic and scoring functions
 """
 import pytest
 import os
 import pandas as pd
 import numpy as np
-from datetime import datetime
-from unittest.mock import Mock, patch, MagicMock
+import functools
 
 
 # ============================================================================
-# UNIT TESTS - Test dashboard data functions
+# UNIT TESTS - Test anomaly scoring logic
 # ============================================================================
 
-class TestLoadMockData:
-    """Unit tests for mock data loading function"""
+class TestZScoreComputation:
+    """Unit tests for z-score computation"""
     
-    def test_load_mock_data_returns_dataframe(self):
-        """Test that load_mock_data returns a DataFrame"""
-        def load_mock_data():
-            data = [
-                {"tx_hash": "0xaaa", "anomaly_score": 0.97, "fraud_flag": True},
-                {"tx_hash": "0xbbb", "anomaly_score": 0.45, "fraud_flag": False},
-            ]
-            return pd.DataFrame(data)
+    def test_zscore_basic(self):
+        """Test basic z-score calculation"""
+        def compute_zscore(value, mean, std):
+            if std is None or std == 0:
+                return None
+            return (value - mean) / std
         
-        df = load_mock_data()
-        assert isinstance(df, pd.DataFrame)
+        assert np.isclose(compute_zscore(120, 100, 10), 2.0)
+        assert np.isclose(compute_zscore(100, 100, 10), 0.0)
+        assert np.isclose(compute_zscore(90, 100, 10), -1.0)
     
-    def test_load_mock_data_has_required_columns(self):
-        """Test that mock data has required columns"""
-        def load_mock_data():
-            data = [
-                {
-                    "tx_hash": "0xaaa",
-                    "from_address": "0xFAR001",
-                    "to_address": "0xEXC001",
-                    "value_eth": 1.25,
-                    "timestamp": "2025-11-26 12:34:56",
-                    "anomaly_score": 0.97,
-                    "fraud_flag": True,
-                }
-            ]
-            df = pd.DataFrame(data)
-            df["timestamp"] = pd.to_datetime(df["timestamp"])
-            return df
+    def test_zscore_zero_std_returns_none(self):
+        """Test z-score returns None when std is zero"""
+        def compute_zscore(value, mean, std):
+            if std is None or std == 0:
+                return None
+            return (value - mean) / std
         
-        df = load_mock_data()
-        
-        required_cols = ['tx_hash', 'from_address', 'to_address', 
-                         'value_eth', 'anomaly_score', 'fraud_flag']
-        for col in required_cols:
-            assert col in df.columns, f"Missing column: {col}"
-    
-    def test_load_mock_data_timestamp_is_datetime(self):
-        """Test that timestamp is properly converted to datetime"""
-        def load_mock_data():
-            data = [{"timestamp": "2025-11-26 12:34:56"}]
-            df = pd.DataFrame(data)
-            df["timestamp"] = pd.to_datetime(df["timestamp"])
-            return df
-        
-        df = load_mock_data()
-        assert pd.api.types.is_datetime64_any_dtype(df['timestamp'])
+        assert compute_zscore(100, 100, 0) is None
 
 
-class TestAnomalyScoreFiltering:
-    """Unit tests for anomaly score filtering"""
+class TestAnomalyScoreComputation:
+    """Unit tests for anomaly score computation"""
     
-    def test_filter_by_min_score(self):
-        """Test filtering by minimum anomaly score"""
-        df = pd.DataFrame({
-            'tx_hash': ['0x1', '0x2', '0x3', '0x4'],
-            'anomaly_score': [0.3, 0.5, 0.8, 0.95]
-        })
-        
-        min_score = 0.8
-        filtered = df[df['anomaly_score'] >= min_score]
-        
-        assert len(filtered) == 2
-        assert '0x3' in filtered['tx_hash'].values
-        assert '0x4' in filtered['tx_hash'].values
+    def test_anomaly_score_single_feature(self):
+        """Test anomaly score with single z-score"""
+        z_scores = [2.0]
+        anomaly_score = sum(z**2 for z in z_scores)
+        assert np.isclose(anomaly_score, 4.0)
     
-    def test_filter_with_zero_threshold(self):
-        """Test filtering with zero threshold returns all"""
-        df = pd.DataFrame({
-            'anomaly_score': [0.1, 0.5, 0.9]
-        })
-        
-        filtered = df[df['anomaly_score'] >= 0.0]
-        assert len(filtered) == 3
+    def test_anomaly_score_multiple_features(self):
+        """Test anomaly score with multiple z-scores"""
+        z_scores = [1.0, 2.0, 3.0]
+        anomaly_score = sum(z**2 for z in z_scores)
+        assert np.isclose(anomaly_score, 14.0)
     
-    def test_filter_with_max_threshold(self):
-        """Test filtering with max threshold returns few/none"""
-        df = pd.DataFrame({
-            'anomaly_score': [0.1, 0.5, 0.9]
-        })
-        
-        filtered = df[df['anomaly_score'] >= 1.0]
-        assert len(filtered) == 0
+    def test_anomaly_score_normal_transaction(self):
+        """Test normal transaction has low anomaly score"""
+        z_scores = [0.1, -0.2, 0.3]
+        anomaly_score = sum(z**2 for z in z_scores)
+        assert anomaly_score < 1.0
+    
+    def test_anomaly_score_outlier_transaction(self):
+        """Test outlier has high anomaly score"""
+        z_scores = [5.0, 4.0, 6.0]
+        anomaly_score = sum(z**2 for z in z_scores)
+        assert anomaly_score > 50
 
 
-class TestFraudMetrics:
-    """Unit tests for fraud metrics calculations"""
+class TestAnomalyLabeling:
+    """Unit tests for anomaly labeling"""
     
-    def test_fraud_count(self):
-        """Test counting fraudulent transactions"""
-        df = pd.DataFrame({
-            'fraud_flag': [True, False, True, True, False]
-        })
+    def test_label_anomaly_above_threshold(self):
+        """Test labeling when score is above threshold"""
+        def label_anomaly(score, threshold):
+            return -1 if score >= threshold else 1
         
-        fraud_count = df['fraud_flag'].sum()
-        assert fraud_count == 3
+        assert label_anomaly(15.0, 10.0) == -1
     
-    def test_fraud_rate_calculation(self):
-        """Test fraud rate calculation"""
-        df = pd.DataFrame({
-            'fraud_flag': [True, False, True, False, False]
-        })
+    def test_label_normal_below_threshold(self):
+        """Test labeling when score is below threshold"""
+        def label_anomaly(score, threshold):
+            return -1 if score >= threshold else 1
         
-        total = len(df)
-        fraud = df['fraud_flag'].sum()
-        fraud_rate = fraud / total if total > 0 else 0.0
-        
-        assert np.isclose(fraud_rate, 0.4)  # 2/5 = 0.4
-    
-    def test_fraud_rate_no_transactions(self):
-        """Test fraud rate with no transactions"""
-        df = pd.DataFrame({'fraud_flag': []})
-        
-        total = len(df)
-        fraud_rate = 0 if total == 0 else df['fraud_flag'].sum() / total
-        
-        assert fraud_rate == 0
-    
-    def test_average_anomaly_score(self):
-        """Test average anomaly score calculation"""
-        df = pd.DataFrame({
-            'anomaly_score': [0.5, 0.7, 0.9, 0.3]
-        })
-        
-        avg_score = df['anomaly_score'].mean()
-        assert np.isclose(avg_score, 0.6)
-    
-    def test_max_anomaly_score(self):
-        """Test max anomaly score"""
-        df = pd.DataFrame({
-            'anomaly_score': [0.5, 0.7, 0.99, 0.3]
-        })
-        
-        max_score = df['anomaly_score'].max()
-        assert np.isclose(max_score, 0.99)
+        assert label_anomaly(5.0, 10.0) == 1
 
 
-class TestSuspiciousAddresses:
-    """Unit tests for suspicious address aggregation"""
+class TestPercentileThreshold:
+    """Unit tests for percentile-based threshold"""
     
-    def test_top_source_addresses(self):
-        """Test getting top source addresses by fraud count"""
+    def test_99th_percentile_threshold(self):
+        """Test 99th percentile calculation"""
+        scores = list(range(100))
+        threshold = np.percentile(scores, 99)
+        assert threshold >= 97
+    
+    def test_threshold_flags_outliers(self):
+        """Test threshold flags top percent"""
+        np.random.seed(42)
+        scores = np.random.normal(0, 1, 1000)
+        threshold = np.percentile(scores, 99)
+        anomalies = [s for s in scores if s >= threshold]
+        assert len(anomalies) <= 20
+
+
+class TestReduceFunction:
+    """Unit tests for functools.reduce"""
+    
+    def test_reduce_sum_squared(self):
+        """Test reduce for summing squared values"""
+        values = [1.0, 2.0, 3.0]
+        squared = [v**2 for v in values]
+        result = functools.reduce(lambda a, b: a + b, squared)
+        assert np.isclose(result, 14.0)
+
+
+# ============================================================================
+# INTEGRATION TESTS
+# ============================================================================
+
+class TestModelingIntegration:
+    """Integration tests with DataFrames"""
+    
+    def test_full_anomaly_scoring_pipeline(self):
+        """Test complete anomaly scoring"""
+        np.random.seed(42)
         df = pd.DataFrame({
-            'from_address': ['0xA', '0xA', '0xB', '0xA', '0xC'],
-            'fraud_flag': [True, True, True, False, True]
+            'log_value': np.random.normal(10, 2, 100),
         })
+        df.loc[0, 'log_value'] = 50  # outlier
         
-        top_from = (
-            df[df['fraud_flag']]
-            .groupby('from_address')
-            .size()
-            .reset_index(name='fraud_count')
-            .sort_values('fraud_count', ascending=False)
+        mean = df['log_value'].mean()
+        std = df['log_value'].std()
+        df['z'] = (df['log_value'] - mean) / std
+        df['anomaly_score'] = df['z']**2
+        
+        threshold = df['anomaly_score'].quantile(0.99)
+        df['pred_label'] = df['anomaly_score'].apply(
+            lambda x: -1 if x >= threshold else 1
         )
         
-        assert top_from.iloc[0]['from_address'] == '0xA'
-        assert top_from.iloc[0]['fraud_count'] == 2
+        assert 'pred_label' in df.columns
     
-    def test_unique_suspicious_wallets(self):
-        """Test counting unique suspicious wallets"""
-        df = pd.DataFrame({
-            'from_address': ['0xA', '0xA', '0xB', '0xC'],
-            'fraud_flag': [True, True, True, False]
-        })
+    def test_outlier_detection(self):
+        """Test outlier has highest score"""
+        df = pd.DataFrame({'value': [100, 101, 99, 1000]})
+        mean = df['value'].mean()
+        std = df['value'].std()
+        df['score'] = ((df['value'] - mean) / std) ** 2
         
-        unique_suspicious = df.loc[df['fraud_flag'], 'from_address'].nunique()
-        assert unique_suspicious == 2  # 0xA and 0xB
-
-
-class TestDailyAggregation:
-    """Unit tests for daily trend aggregation"""
-    
-    def test_daily_transaction_count(self):
-        """Test daily transaction count aggregation"""
-        df = pd.DataFrame({
-            'timestamp': pd.to_datetime([
-                '2025-01-01 10:00', '2025-01-01 11:00',
-                '2025-01-02 10:00'
-            ]),
-            'tx_hash': ['0x1', '0x2', '0x3']
-        })
-        
-        daily = df.set_index('timestamp').resample('D').agg(
-            total_tx=('tx_hash', 'count')
-        ).reset_index()
-        
-        assert len(daily) == 2
-        assert daily.iloc[0]['total_tx'] == 2  # Jan 1
-        assert daily.iloc[1]['total_tx'] == 1  # Jan 2
-    
-    def test_daily_fraud_count(self):
-        """Test daily fraud count aggregation"""
-        df = pd.DataFrame({
-            'timestamp': pd.to_datetime([
-                '2025-01-01 10:00', '2025-01-01 11:00',
-                '2025-01-02 10:00'
-            ]),
-            'fraud_flag': [True, False, True]
-        })
-        
-        daily = df.set_index('timestamp').resample('D').agg(
-            fraud_tx=('fraud_flag', 'sum')
-        ).reset_index()
-        
-        assert daily.iloc[0]['fraud_tx'] == 1  # Jan 1
-        assert daily.iloc[1]['fraud_tx'] == 1  # Jan 2
+        assert df['score'].idxmax() == 3
 
 
 # ============================================================================
-# INTEGRATION TESTS - Test component interactions
+# SYSTEM TESTS
 # ============================================================================
 
-class TestDashboardIntegration:
-    """Integration tests for dashboard components"""
-    
-    def test_full_data_pipeline(self):
-        """Test complete data pipeline from load to display"""
-        # Load
-        data = [
-            {"tx_hash": "0x1", "anomaly_score": 0.9, "fraud_flag": True,
-             "from_address": "0xA", "to_address": "0xB", "value_eth": 1.0,
-             "timestamp": "2025-01-01 10:00"},
-            {"tx_hash": "0x2", "anomaly_score": 0.3, "fraud_flag": False,
-             "from_address": "0xC", "to_address": "0xD", "value_eth": 0.5,
-             "timestamp": "2025-01-01 11:00"},
-        ]
-        df = pd.DataFrame(data)
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        
-        # Filter
-        min_score = 0.5
-        filtered = df[df['anomaly_score'] >= min_score]
-        
-        # Metrics
-        total_tx = len(df)
-        suspicious = len(filtered)
-        fraud_rate = df['fraud_flag'].sum() / total_tx
-        
-        assert total_tx == 2
-        assert suspicious == 1
-        assert np.isclose(fraud_rate, 0.5)
-    
-    def test_slider_range_validation(self):
-        """Test that slider values are in valid range"""
-        min_value = 0.0
-        max_value = 1.0
-        
-        test_values = [0.0, 0.5, 0.8, 1.0]
-        
-        for val in test_values:
-            assert min_value <= val <= max_value
-
-
-# ============================================================================
-# SYSTEM TESTS - Test script structure
-# ============================================================================
-
-class TestDashboardScript:
-    """System tests for dashboard script"""
+class TestModelingScript:
+    """System tests for modeling script"""
     
     SCRIPT_PATHS = [
-        'dashboard/app.py',
-        'app.py',
-        'streamlit_app.py',
+        'glue_jobs/modeling.py',
+        'glue_jobs/ethereum_fraud_modeling.py',
+        'modeling.py',
     ]
     
     def find_script(self):
@@ -290,93 +169,29 @@ class TestDashboardScript:
         return None
     
     def test_script_exists(self):
-        """Test that dashboard script exists"""
+        """Test modeling script exists"""
         script = self.find_script()
         if script is None:
-            pytest.skip("Dashboard script not found")
+            pytest.skip("Modeling script not found")
         assert os.path.exists(script)
     
     def test_script_has_valid_syntax(self):
-        """Test script compiles without errors"""
+        """Test script compiles"""
         script = self.find_script()
         if script is None:
-            pytest.skip("Dashboard script not found")
+            pytest.skip("Modeling script not found")
         
         with open(script, 'r') as f:
             code = f.read()
-        
-        try:
-            compile(code, script, 'exec')
-        except SyntaxError as e:
-            pytest.fail(f"Syntax error: {e}")
+        compile(code, script, 'exec')
     
-    def test_script_imports_streamlit(self):
-        """Test script imports streamlit"""
+    def test_script_has_anomaly_detection(self):
+        """Test script has anomaly detection"""
         script = self.find_script()
         if script is None:
-            pytest.skip("Dashboard script not found")
+            pytest.skip("Modeling script not found")
         
         with open(script, 'r') as f:
-            content = f.read()
+            content = f.read().lower()
         
-        assert 'import streamlit' in content
-    
-    def test_script_imports_pandas(self):
-        """Test script imports pandas"""
-        script = self.find_script()
-        if script is None:
-            pytest.skip("Dashboard script not found")
-        
-        with open(script, 'r') as f:
-            content = f.read()
-        
-        assert 'import pandas' in content
-    
-    def test_script_has_load_function(self):
-        """Test script has data loading function"""
-        script = self.find_script()
-        if script is None:
-            pytest.skip("Dashboard script not found")
-        
-        with open(script, 'r') as f:
-            content = f.read()
-        
-        assert 'def load_mock_data' in content or 'def load_data' in content
-    
-    def test_script_has_metrics(self):
-        """Test script displays metrics"""
-        script = self.find_script()
-        if script is None:
-            pytest.skip("Dashboard script not found")
-        
-        with open(script, 'r') as f:
-            content = f.read()
-        
-        assert 'st.metric' in content
-    
-    def test_script_has_sidebar(self):
-        """Test script uses sidebar"""
-        script = self.find_script()
-        if script is None:
-            pytest.skip("Dashboard script not found")
-        
-        with open(script, 'r') as f:
-            content = f.read()
-        
-        assert 'st.sidebar' in content
-    
-    def test_script_no_hardcoded_secrets(self):
-        """Test script has no hardcoded credentials"""
-        script = self.find_script()
-        if script is None:
-            pytest.skip("Dashboard script not found")
-        
-        with open(script, 'r') as f:
-            content = f.read()
-        
-        suspicious = ['password=', 'api_key=', 'secret=']
-        for pattern in suspicious:
-            if pattern in content.lower():
-                # Check it's not reading from env
-                assert 'getenv' in content or 'environ' in content, \
-                    f"Potential hardcoded secret: {pattern}"
+        assert 'anomaly' in content or 'zscore' in content
