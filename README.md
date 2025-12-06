@@ -113,7 +113,7 @@ ethereum-fraud-detection/
 │   └── dashboard_screenshot.png
 │
 ├── glue_jobs/                  # AWS Glue ETL scripts
-│   ├── etherscan_to_s3_glue.py
+│   ├── ethereum_fraud_modeling_rds.py
 │   ├── glue-feature-engineering.py
 │   ├── ethereum_fraud_modeling.py
 │   └── etherscan_ingestion.py
@@ -199,7 +199,8 @@ spark-submit glue_jobs/glue_feature_engineering.py
 Run the modeling script:
 
 ```bash
-spark-submit glue_jobs/ethereum_modeling.py
+spark-submit glue_jobs/ethereum_fraud_modeling.py
+spark-submit glue_jobs/ethereum_fraud_modeling_rds.py
 ```
 
 **Step 4: Launch Dashboard**
