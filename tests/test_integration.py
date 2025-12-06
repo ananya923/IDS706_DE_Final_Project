@@ -101,8 +101,8 @@ def test_all_python_files_have_valid_syntax():
     """Test that all Python files have valid syntax"""
     errors = []
     
-    dirs[:] = [d for d in dirs if not d.startswith('.') 
-           and d not in ['venv', '__pycache__', 'scripts']]
+    for root, dirs, files in os.walk('.'):
+        dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['venv', '__pycache__', 'scripts']]
         
         for f in files:
             if f.endswith('.py'):
