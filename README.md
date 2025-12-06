@@ -1,116 +1,372 @@
-# Unusual Suspects - Crypto Market Fraud Detection Model
+# Ethereum Transaction Fraud Detection
+Data Engineering Pipeline for Course IDS706, MS Data Science, Duke University
 
-## Description
+## Project Overview
 
- Unusual Suspects is a machine learning–driven fraud detection system designed to identify anomalous and suspicious patterns in Ethereum transaction data. The system runs on a daily batch schedule to extract, process, and analyze blockchain transactions using both labeled and unlabeled datasets. It delivers actionable insights to risk management teams through an interactive fraud monitoring dashboard, aiming to achieve high precision while maintaining low false-positive rates.
+This project implements an end-to-end data engineering pipeline for detecting fraudulent Ethereum transactions using real blockchain data from Etherscan.io. The system ingests transaction data via Etherscan APIs, stores it in AWS S3, performs ETL transformations and feature engineering using AWS Glue and PySpark, builds fraud detection models, stores results in Amazon S3, and visualizes insights through an interactive Streamlit dashboard.
 
-## Data Sources
-Model development dataset: 
-- [[Kaggle](https://www.kaggle.com/datasets/vagifa/ethereum-frauddetection-dataset)] Ethereum Fraud Detection DatasetLinks to an external site.
-- Contains labeled fraudulent and legitimate Ethereum transactions
-- Used for initial training, validation, and benchmark comparison.
-Operational Dataset: 
-- [[Etherscan](https://etherscan.io/)] Ethereum Transactions APILinks to an external site.
-- Daily transactions and metadata (sender, receiver, gas fee, timestamps)
-- Stored in structured form for batch feature extraction.
+The pipeline demonstrates practical cloud-based data engineering for blockchain analytics, covering data ingestion, distributed processing, machine learning, and real-time visualization.
+
+## Team and Contributions
+
+This project was developed collaboratively by five data engineers from November 12 to December 5, 2025. They performed the following roles:
+
+- Project Manager/Team Lead: Overall project coordination, system architecture design, timeline management, and communication.
+- ML Engineer: Isolation Forest model development, performance evaluation, feature engineering, and threshold optimization for anomaly detection.
+- Backend Developer: AWS infrastructure management,Etherscan API integration, MySQL database design, batch processing pipeline, and automated scheduling implementation.
+- Frontend Developer: Streamlit dashboard development, data visualization, user interface design, and real-time alert display systems.
+- DevOps Engineer: README documentation, Docker containerization, CI/CD pipeline setup, and system monitoring.  
+
+All team members contributed through regular commits, code reviews, and collaborative problem-solving throughout the project lifecycle.
+
 
 ## Architecture
 
-1. Data Collection & Storage
+The fraud detection system follows a five-stage architecture:
 
-Etherscan API (Data) through automating scheduled ingestion in Amazon ECR -> Designing the data schema in Amazon S3 -> Store the data as a database in Amazon RDS -> 
-Daily batch collection of Ethereum transactions via Etherscan API and automating scheduled ingestion in Amazon ECR. Store raw transaction data in Amazon S3 and process it into a database in Amazon RDS. 
+### 1. Data Ingestion (Etherscan API → AWS S3)
 
-2. Feature Engineering & Preprocessing
+The ingestion layer retrieves real Ethereum transaction data from Etherscan.io using API keys. The script queries specific wallet addresses and their transaction histories, then writes raw JSON responses to S3 buckets organized by date. This creates a data lake foundation where all incoming blockchain data lands before processing.
 
-Extract transaction features including transaction patterns (amount, frequency), temporal behaviors, and address relationship mappings using pandas for data manipulation
+### 2. Feature Engineering (AWS Glue / PySpark)
 
-3. Unsupervised Model Training
+The feature engineering stage transforms raw transaction data into model-ready features using PySpark on AWS Glue. This distributed processing handles large transaction volumes efficiently.
 
-Train Isolation Forest model (scikit-learn) to train on unlabeled data from historical Ethereum transactions. Validate and tune hyperparameters using known fraud cases from the Kaggle dataset.
+The pipeline creates features at both transaction and address levels:
 
-4. Anomaly Detection & Scoring
+- Transaction-level features: gas prices, transaction values in Wei and Ether, timestamp conversions, transaction types  
+- Address-level aggregations: total transaction counts, cumulative sent/received amounts, average transaction values, transaction frequency patterns, unique counterparty addresses  
+- Behavioral metrics: time between transactions, transaction velocity, value distribution statistics, sender–receiver ratios  
 
-Apply trained model to daily transaction batches, compute anomaly scores, and apply threshold-based filtering to identify suspicious transactions with minimal false positives. 
+These features capture behavioral patterns that distinguish normal activity from potentially fraudulent transactions.
 
-5. Dashboard & Monitoring
-Build Streamlit-based dashboard displaying real-time fraud alerts, transaction pattern visualizations, daily statistics, and manual review interface for risk team validation.
+### 3. Fraud Detection Modeling (PySpark ML)
 
-# Project Setup
+The modeling layer applies machine learning algorithms to engineered features to calculate fraud risk scores. Using PySpark MLlib, the system trains classification models that identify suspicious transaction patterns.
 
-## Devcontainer Setup
+The model pipeline includes:
 
-A devcontainer is a Docker-based container specifically configured to serve as a complete development environment, ensuring consistency and reproducibility across different machines and setups. It allows developers to package all the necessary tools, libraries, frameworks, and configuration files for a project into a single environment, making onboarding and environment setup much faster and more reliable.
+- Feature selection and preprocessing (normalization, missing value handling)  
+- Training fraud detection classifiers  
+- Model evaluation with metrics like precision, recall, and F1-score  
+- Risk score generation for each transaction and address  
+- Model persistence for production deployment  
 
-The devcontainer folder for this assignment is named as .devconatiner which has a bunch of files in it that makes this entire project work seamlessly.
+Predictions are written back to S3 and loaded into RDS for dashboard consumption.
 
-We do use some Amazon tools which need not require a devcontainer setup, since those tools are accessed in the cloud (AWS)
+### 4. Data Storage and Querying (S3 / Athena / RDS)
 
-## Data Ingestion
+Storage Architecture:
 
-## Description of the tools used for this step
+- S3 data lake: raw ingestion data, intermediate transformation outputs, and model results stored in Parquet format  
+- AWS Athena: SQL queries against S3 data for ad-hoc analysis and exploration  
+- Amazon RDS (PostgreSQL): structured storage for processed transactions, engineered features, and fraud scores, optimized for dashboard queries
 
-- Amazon S3
-Amazon S3 (Simple Storage Service) is an object storage service from AWS that provides industry-leading scalability, data availability, security, and performance for storing and protecting any amount of data. Organizations of all sizes use S3 for diverse use cases including data lakes, websites, mobile applications, backup and restore, archiving, enterprise applications, IoT devices, and big data analytics. S3 integrates seamlessly with other AWS services like ECR for big data processing, making it a foundational component of cloud-based data architectures.
+The dual storage approach provides flexibility for both analytical queries (Athena) and application-level access patterns (RDS).
 
-- Amazon RDS
-Amazon RDS (Relational Database Service) is a fully managed database service from AWS that simplifies setting up, operating, and scaling relational databases in the cloud. It supports multiple popular database engines including PostgreSQL, MySQL, MariaDB, Oracle, SQL Server, and IBM Db2, allowing you to use familiar database software without managing the underlying infrastructure. For the purposes of this project, we are using MySQL. 
+### 5. Visualization (Streamlit Dashboard)
 
-- Amazon ECR
-Amazon ECR (Elastic Container Registry) is a fully managed Docker container registry service from AWS that allows you to store, manage, and deploy container images securely and reliably. For this project, we are using it to store the ETL jobs. 
+The Streamlit web application connects to RDS and presents fraud detection results through a visual interface. Users can explore:
 
-We are using two data sources, the Kaggle data of fraud ethereum transactions as our labelled data for training the Isolation Forest model and then use this model on the ethereum transactions data which we collect daily using the Etherscan API. We use Amazon S3 and RDS to collect the API data, and store them. We also use Amazon ECR to preprocess the big API data to automate and schedule data ingestion and perform ETL jobs on it. 
+- Real-time fraud risk scores for monitored Ethereum addresses  
+- Transaction history with detailed feature breakdowns  
+- Temporal patterns showing transaction volume and risk trends over time  
+- Filtering by address, date range, transaction value, and risk level  
+- Downloadable reports for compliance and investigation teams  
 
-## Data Transformation and Feature Engineering of the Ethereum transactions (API) dataset.
+The dashboard updates automatically as new batches are processed.
 
-The Etheurem data (unlabelled data) gets transformed by doing some feature engineering to improve the performance of the Isolation Forest Model. 
-The `Feature_Engineering.ipynb` notebook has all the codes for the data transformation.
+## Data Flow
 
-The notebook starts with creating a Spark DataFrame from raw transaction data, then performs data cleaning and type conversions. It identifies contract interactions by checking if contractAddress is present, cleans function names by removing parameter signatures, and casts columns to appropriate types (numeric or categorical).
+The complete pipeline executes in this sequence:
 
-The code extracts time-based features from timestamps, including date, week start, hour, and time-of-day slots (midnight, morning, afternoon, night). It then aggregates transaction counts and failure rates at multiple time granularities—total, daily, and weekly—for both sender (from) and receiver (to) addresses. To measure transaction frequency patterns, it calculates average intervals between consecutive transactions per address using window functions with lag().
+1. API key configuration: Etherscan API keys are configured as environment variables.  
+2. Data ingestion: `etherscan_to_s3_glue.py` calls Etherscan APIs for configured addresses and writes transaction data to S3 buckets.  
+3. Feature engineering: `glue_feature_engineering.py` reads raw S3 data, applies transformations using PySpark, and generates engineered feature tables stored back in S3.  
+4. Model training and scoring: `glue_modeling.py` loads feature tables, trains or applies fraud detection models, and outputs predictions to S3 and RDS.  
+5. Database loading: processed data and predictions are loaded into RDS tables with proper schema and indexes.  
+6. Athena table creation: external tables in Athena are configured to point at S3 data for SQL-based analysis.  
+7. Dashboard deployment: `app.py` Streamlit application connects to RDS and serves the fraud detection interface.  
 
-The code applies log transformations to value and gasPrice to handle their wide ranges, then implements anomaly detection using rolling 7-day windows. For each address, it calculates rolling means and standard deviations, computes z-scores, and flags "spike" transactions that exceed 3 standard deviations above the rolling mean—indicating potentially unusual transaction behavior. The spike detection includes safeguards to avoid false positives when insufficient historical data exists.
+## Repository Structure
 
-Categorical features like methodId, functionName, and time_slot are encoded using a PySpark ML Pipeline. The pipeline applies StringIndexer to convert strings to numeric indices, then OneHotEncoder to create binary vector representations suitable for machine learning models.
+```markdown
+ethereum-fraud-detection/
+│
+├── .github/
+│   └── workflows/              # CI/CD pipeline 
+│       ├── ci-pipeline.yml
+│       └── deploy-dashboard.yml
+│
+├── .vscode/                    # VS Code editor settings
+│   ├── run_ingestor.sh
+│   └── settings.json
+│
+├── dashboard/                  # Streamlit dashboard application
+│   ├── Dockerfile
+│   ├── appy.py
+│   └── docker-compose.yml
+│
+├── glue_jobs/                  # AWS Glue ETL scripts
+│   ├── etherscan_to_s3_glue.py
+│   ├── glue_feature_engineering.py
+│   └── ethereum_modeling.py
+│
+├── scripts/                    # Utility and automation scripts
+│   ├── __init__.py
+│   ├── feature_engineering.py
+│   └── modeling.py
+│
+├── tests/                      # Test suite
+│   ├── __pycache__/
+│   ├── test_dashboard.py
+│   ├── test_docker_integration.py
+│   ├── test_etherscan_ingestion.py
+│   ├── test_feature_engineering.py
+│   ├── test_integration.py
+│   └── test_modeling.py
+│
+├── .coverage                  # Code coverage report
+├── .dockerignore              # Docker build exclusions
+├── .gitignore                 # Git exclusions
+├── Dockerfile                 # Docker container configuration
+├── Makefile                   # Build automation commands
+├── README.md                  # Project documentation
+├── docker-compose.yml         # Multi-container Docker configuration
+├── ethereum-feature-engineering.py
+├── ethereum_fraud_modeling.py
+├── file.env.example           # Environment variables template
+├── requirements-dev.txt       # Development dependencies
+└── requirements.txt           # Production dependencies
 
-Finally, all engineered features are joined back to the main DataFrame using left joins on appropriate keys (from, to, date, week_start). The result is a comprehensive dataset combining raw transaction data with temporal patterns, behavioral metrics, anomaly indicators, and encoded categorical variables—ready for downstream analytics or fraud detection models.
-
-# Application of Isolation Forest Tree Model on the transformed API data.
-
-The notebook that has the codes for this step is `Modeling.ipynb`.
-
-1. Package Installation
-The notebook imports essential libraries including NumPy, pandas, and scikit-learn components (IsolationForest, StandardScaler, train_test_split, and evaluation metrics).​
-
-2. Feature Selection
-The code defines a comprehensive feature set that includes log-transformed values (log_value, log_gasPrice), behavioral statistics for both sender and receiver addresses (transaction counts, failure rates, intervals at daily/weekly/total levels), anomaly indicators (value_zscore, gasPrice_zscore, value_spike, gasPrice_spike), rolling transaction counts, and contract call flags. The PySpark DataFrame is converted to pandas, and categorical features (methodId, functionName, time_slot) are one-hot encoded using pd.get_dummies().​
-
-3. Model Configuration
-An Isolation Forest classifier is configured with 100 trees (n_estimators=100), assuming a 1% fraud contamination rate (contamination=0.01), and parallel processing enabled (n_jobs=-1). This unsupervised approach identifies outliers without requiring labeled training data.​
-
-4. Training and Prediction
-The model is trained on the feature matrix, then generates predictions where normal transactions are labeled as 1 and anomalies as -1. Each transaction receives an anomaly score (lower scores indicate higher suspicion), and the notebook outputs the total anomaly count with percentage, plus the top 10 most suspicious transactions sorted by anomaly score. 
-
-# Running the test cases
+```
 
 
-# Key Takeaways:
+## Setup Instructions
+
+### Prerequisites
+
+- Python 3.10 or higher  
+- AWS account with access to S3, Glue, Athena, and RDS  
+- Etherscan API key  
+- Docker and Docker Compose (optional)  
+
+### Local Development Setup
+
+1. Clone this Github repository.
+
+2. Install Python dependencies:
+pip install -r requirements.txt
 
 
-# Dashboard
+3. Configure environment variables and edit `.env` with your credentials:
+- cp .env.example .env
+- ETHERSCAN_API_KEY=your_etherscan_api_key
+- AWS_ACCESS_KEY_ID=your_aws_access_key
+- AWS_SECRET_ACCESS_KEY=your_aws_secret_key
+- AWS_REGION=us-east-1
+- S3_BUCKET=your-ethereum-data-bucket
+- RDS_HOST=your-rds-endpoint
+- RDS_DATABASE=fraud_detection
+- RDS_USER=your_db_user
+- RDS_PASSWORD=your_db_password
 
 
-# Team Members and Roles
+4. Run tests:
+pytest tests/ -v
 
-- Project Manager/Team Lead (Everybody) – Overall project coordination, system architecture design, timeline management, and communication.
-  
-- ML Engineer (Seohyun Oh) – Isolation Forest model development, performance evaluation, feature engineering, and threshold optimization for anomaly detection.
-  
-- Backend Developers (Ananya Jogalekar and Farnoosh Memari)– AWS infrastructure management,Etherscan API integration, MySQL database design, batch processing pipeline, and automated scheduling implementation.
-  
-- Frontend Developer (Shelly Cao) – Streamlit dashboard development, data visualization, user interface design, and real-time alert display systems.
-  
-- DevOps Engineer (Sebine Scaria) – README documentation, Docker and Devcontainer containerization, CI/CD pipeline setup, and system monitoring.
+### Running the Pipeline
+**Step 1: Ingest Ethereum Data**
+Run the ingestion script to fetch transactions from Etherscan:
+python data_ingestion/etherscan_to_s3_glue-1.py
 
+**Step 2: Feature Engineering**
+Execute the Glue job or run locally:
 
+```bash
+# For local PySpark execution:
+spark-submit glue_jobs/glue_feature_engineering.py
+
+# Or trigger AWS Glue job through console/CLI
+```
+
+**Step 3: Train and Apply Fraud Detection Model**
+Run the modeling script:
+
+```bash
+spark-submit glue_jobs/ethereum_modeling.py
+```
+
+**Step 4: Launch Dashboard**
+Start the Streamlit application:
+
+```bash
+cd dashboard
+streamlit run app.py
+```
+Access the dashboard at http://localhost:8501 to explore fraud detection results.
+
+### Querying Data with Athena
+Create Athena tables pointing to your S3 data:
+
+```sql
+CREATE EXTERNAL TABLE ethereum_transactions (
+    hash STRING,
+    from_address STRING,
+    to_address STRING,
+    value BIGINT,
+    gas BIGINT,
+    timestamp BIGINT
+)
+STORED AS PARQUET
+LOCATION 's3://your-bucket/ethereum-transactions/';
+```
+
+## Testing Strategy
+The CI/CD pipeline runs comprehensive tests on every pull request:
+
+We implement testing coverage across six files: `test_feature_engineering.py` tests data transformation logic (column cleaning, temporal features, log transformations, z-scores), `test_modeling.py` validates anomaly detection algorithms (scoring, thresholds, labeling), `test_integration.py` performs system-level validation (pipeline structure, CI/CD setup, Docker configuration, environment reproducibility), `test_dashboard.py` validates the Streamlit dashboard (data loading, filtering, fraud metrics, suspicious address aggregation, daily trends), `test_docker_integration.py` tests containerization and deployment (Dockerfile structure, docker-compose services, .dockerignore, Makefile targets, Docker runtime), and `test_etherscan_ingestion.py` validates API data ingestion (API key rotation, S3 key formatting, transaction fetching, configuration parsing). Tests are organized in three tiers: unit tests for individual functions, integration tests for DataFrame operations, and system tests for project structure validation. Run with `pytest` or `pytest <filename>` for specific test files.
+
+All tests must pass before merging to main, maintaining code quality and preventing regressions.
+
+## Project Components
+The team implemented the following components for this data engineering project.
+
+1. Project Repository and Collaboration
+- All team members actively contributed to a shared GitHub repository. Roughly, we followed the following team roles, and switched roles for a few tasks so that each member had exposure to all aspects of the project process:
+    - Project Manager/Team Lead (Everybody) – Overall project coordination, system architecture design, timeline management, and communication.
+    - ML Engineer (Seohyun Oh) – Isolation Forest model development, performance evaluation, feature engineering, and threshold optimization for anomaly detection.
+    - Backend Developers (Ananya Jogalekar and Farnoosh Memari) – AWS infrastructure management, Etherscan API integration, MySQL database design, batch processing pipeline, and automated scheduling implementation.
+    - Frontend Developer (Shelly Cao and Farnoosh Memari) – Streamlit dashboard development, data visualization, user interface design, and real-time alert display systems.
+    - DevOps Engineer (Sebine Scaria and Ananya Jogalekar) – README documentation, Docker and Devcontainer containerization, CI/CD pipeline setup, and system monitoring.
+
+2. Data Ingestion 
+- We use daily batch ingestion of real transaction data from the [Etherscan API](https://etherscan.io/apis), which contains real-world Ethereum transactions.
+
+3. Data Storage
+- We store data in two systems: Amazon S3 (data lake) and Amazon RDS (relational database system).
+- We use these two systems for appropriate use cases: large-scale data manipulation from S3 and querying and dashboarding from RDS.
+- While deploying on the cloud platform AWS, we ensure proper schema design for aligning it across the deployment process which involves crawlers, ETL jobs, and triggers in Amazon Glue.
+
+4. Data Querying
+- We implement data querying in Athena:
+    - Our first query generates daily transaction statistics by calculating the total number of transactions, the number of failed transactions, and the total on-chain transaction value for each date.
+    - Our second query extracts high gas-price anomaly transactions by selecting all records flagged as gasprice_spike = 1. This helps identify potential outliers, bot activity, or suspicious high-fee transactions.
+
+5. Data Transformation and Analysis
+- We use PySpark to analyze and transform our data (run feature engineering) before processing it with an ML model.
+    - This code does data cleaning of the raw API data, casts numeric columns, and prepares it for modeling.
+- We generate various statistical insights in this process, including:
+    - means, stddevs, z-scores, percentiles, anomaly scoring
+
+6. Architecture and Orchestration
+- We use Triggers in AWS to schedule daily batch ingestion and Glue ETL jobs to run the entire pipeline on these batches.
+- Architecture diagram:
+```markdown
+                 ┌──────────────────────────────┐
+                 │   Raw Ethereum JSON Files     │
+                 │  S3: de-27-team11-new/raw/... │
+                 └───────────────┬───────────────┘
+                                 │
+                                 ▼
+              ┌──────────────────────────────────────┐
+              │ Glue Crawler: ethereum-txlist-crawler │
+              └───────────────┬───────────────────────┘
+                              │  Creates Table:
+                              │  ethereum_db.raw_txlist
+                              ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ Glue Job: ethereum-feature-engineering                          │
+  │ - Flatten JSON result[]                                         │
+  │ - Temporal features                                             │
+  │ - Address-level statistics                                      │
+  │ - Rolling windows, z-scores, spikes                             │
+  │ - Writes Parquet features to S3                                 │
+  └───────────────┬─────────────────────────────────────────────────┘
+                  │
+                  ▼
+ ┌────────────────────────────────────────────────────────────┐
+ │ Glue Crawler: ethereum-processed-features-crawler          │
+ │ → Creates ethereum_db.processed_txlist_features            │
+ └───────────────┬────────────────────────────────────────────┘
+                 │
+                 ▼
+  ┌────────────────────────────────────────────────────────────┐
+  │ Glue Job: ethereum-fraud-modeling                          │
+  │ - Reads processed features                                 │
+  │ - Computes anomaly scores                                  │
+  │ - Labels suspicious transactions                           │
+  │ - Writes results to S3                                     │
+  └───────────────┬────────────────────────────────────────────┘
+                  │
+                  ▼
+ ┌─────────────────────────────────────────────────────────────┐
+ │ Glue Crawler: ethereum-fraud-predictions-crawler            │
+ │ → Creates ethereum_db.fraud_predictions                     │
+ └───────────────┬─────────────────────────────────────────────┘
+                  │
+                  ▼
+                ┌─────────────────────────────────┐
+                │            Athena               │
+                │ Query raw, features, predictions│
+                └──────────────┬──────────────────┘
+                               │
+                               ▼
+                ┌─────────────────────────────────┐
+                │      Streamlit Dashboard        │
+                │ - Real-time fraud monitoring    │
+                │ - Anomaly score visualization   │
+                │ - Suspicious address tracking   │
+                │ - Daily trend analysis          │
+                └─────────────────────────────────┘
+```
+
+7. Containerization, CI/CD and Testing
+- We implement a reporoducible environment, CI pipeline, and testing setup in this GitHub repository, as explained in the Testing Strategy section of this document.
+
+8. Undercurrents of Data Engineering
+
+Our system is built for scalability and efficiency, using S3 for unlimited storage and distributed PySpark processing on Glue to handle growing blockchain data volumes. A modular, reusable pipeline design separates ingestion, feature engineering, modeling, and monitoring, while strong observability, governance, and security practices (CloudWatch logging, IAM, TLS, Secrets Manager, encryption) ensure reliability and compliance. Fault-tolerance mechanisms, cost-optimized storage/compute choices, and database optimizations further support consistent, performant end-to-end data processing. Here is how we address specific aspects of the principles of data engineering:
+- Scalability: data lake storage, distributed PySpark processing allows for large-scale data handling
+- Modularity: Ingestion, feature engineering, and modeling scripts are decoupled, allowing parallel development and testing
+- Reusability: Feature engineering functions are packaged as reusable PySpark transformations that can be applied to other blockchain networks (Bitcoin, Polygon) or extended for new fraud patterns
+- Efficiency: S3 data is partitioned by date to minimize scanning for recent queries. Glue jobs use dynamic resource allocation, scaling clusters based on workload. Dashboard queries use database indexes to avoid full table scans
+- Security: confidential information like API keys and connection authorization information are stored as environment variables, like GitHub secrets.
+
+## Collaboration Workflow
+The team followed a Git branch workflow:
+
+1. Create feature branches from main for new work
+
+2. Commit changes regularly with descriptive messages
+
+3. Push branches and open pull requests for code review
+
+4. GitHub Actions automatically runs tests on each PR
+
+5. After approval and passing tests, merge to main
+
+6. Main branch always remains deployable
+
+7. Multiple team members commit weekly, ensuring active collaboration and knowledge sharing.
+
+## Project Outcomes
+The fraud detection system successfully processes real Ethereum transaction data and identifies suspicious patterns. The model achieves strong performance metrics on validation sets, demonstrating ability to surface actionable intelligence from raw blockchain data.
+
+The complete pipeline executes daily ingestion and analysis of thousands of transactions, producing updated fraud scores within 30 minutes of data availability. This performance meets stakeholder requirements for near real-time fraud monitoring.
+
+## Future Enhancements
+- Automated Orchestration: Implement Apache Airflow DAGs to schedule and monitor the entire pipeline end-to-end
+- Advanced Features: Incorporate graph analytics to trace fund flows across multiple hops and identify laundering patterns
+- Real-time Processing: Add Kafka streaming for immediate fraud detection on high-value transactions
+- Model Improvements: Experiment with deep learning (LSTM, GNN) for capturing complex temporal and network patterns
+- Alerting System: Integrate SNS or PagerDuty to notify security teams when high-risk activity is detected
+- Feedback Loop: Build analyst interface to label confirmed fraud cases, enabling continuous model retraining
+
+## Contact and Contribution
+For questions about setup, development, or contributions, contact the project team:
+- Shelly Cao
+- Ananya Jogalekar
+- Farnoosh Memari
+- Seohyun (Claire) Oh
+- Sebine Scaria
