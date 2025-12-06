@@ -1,4 +1,5 @@
 name: Build & Deploy Dashboard to EC2
+# trigger deploy
 
 on:
   push:
