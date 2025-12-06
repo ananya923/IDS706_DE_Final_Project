@@ -130,35 +130,6 @@ daily = (
 trend_data = daily.set_index("timestamp")[["total_tx", "fraud_tx"]]
 st.line_chart(trend_data)
 
-# Top wallets
-st.subheader("Top Suspicious Addresses")
-
-col_left, col_right = st.columns(2)
-
-with col_left:
-    st.caption("Top source addresses (from_address)")
-    top_from = (
-        df[df["fraud_flag"] == 1]
-        .groupby("from_address")
-        .size()
-        .reset_index(name="fraud_count")
-        .sort_values("fraud_count", ascending=False)
-        .head(5)
-    )
-    st.dataframe(top_from, use_container_width=True)
-
-with col_right:
-    st.caption("Top destination addresses (to_address)")
-    top_to = (
-        df[df["fraud_flag"] == 1]
-        .groupby("to_address")
-        .size()
-        .reset_index(name="fraud_count")
-        .sort_values("fraud_count", ascending=False)
-        .head(5)
-    )
-    st.dataframe(top_to, use_container_width=True)
-
 # Score distribution
 st.subheader("Anomaly Score Distribution")
 
