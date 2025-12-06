@@ -179,9 +179,13 @@ def save_predictions_parquet(df, bucket: str):
             .parquet(f"s3://{bucket}/{predictions_prefix}")
         )
     else:
-        df.write.mode("overwrite").parquet(f"s3://{bucket}/{predictions_prefix}")
+        df.write.mode("overwrite").parquet(
+            f"s3://{bucket}/{predictions_prefix}"
+        )
 
-    print(f"Parquet predictions written to s3://{bucket}/{predictions_prefix}")
+    print(
+        f"Parquet predictions written to s3://{bucket}/{predictions_prefix}"
+    )
 
 
 def save_csv_and_metadata(df, feature_names, bucket: str):
