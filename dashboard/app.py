@@ -23,7 +23,7 @@ def load_real_data():
     if not all([DB_HOST, DB_NAME, DB_USER, DB_PASSWORD]):
         raise RuntimeError("❌ Missing DB environment variables.")
 
-    # Postgres engine (change if MySQL)
+    # MySQL engine
     engine = create_engine(
     f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
