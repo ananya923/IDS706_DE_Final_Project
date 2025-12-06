@@ -1,4 +1,4 @@
-# Ethereum Transaction Fraud Detection
+# Unusual Suspects: Ethereum Transaction Fraud Detection
 Data Engineering Pipeline for Course IDS706, MS Data Science, Duke University
 
 ## Project Overview
@@ -263,15 +263,17 @@ The team implemented the following components for this data engineering project.
 - We use Triggers in AWS to schedule daily batch ingestion and Glue ETL jobs to run the entire pipeline on these batches.
 - Architecture diagram:
 ```markdown
-                 ┌──────────────────────────────┐
-                 │   Raw Ethereum JSON Files     │
-                 │  S3: de-27-team11-new/raw/... │
-                 └───────────────┬───────────────┘
-                                 │
-                                 ▼
-              ┌──────────────────────────────────────┐
-              │ Glue Crawler: ethereum-txlist-crawler │
-              └───────────────┬───────────────────────┘
+┌──────────────────────────────┐
+│   Raw Ethereum JSON Files     │
+│  S3: de-27-team11-new/raw/... │
+└───────────────┬───────────────┘
+                │
+                ▼
+┌──────────────────────────────────────┐
+│ Glue Job: ethereum-feature-engineering │
+│ - Flatten JSON result[]                │
+│ - Temporal features                    │
+└──────────────────────────────────────┘
                               │  Creates Table:
                               │  ethereum_db.raw_txlist
                               ▼
